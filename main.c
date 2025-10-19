@@ -8,9 +8,12 @@
 #define TIME_LEN 7
 #define LINE_LEN 7
 
-#define START_MODE 1
-#define END_MODE 2
-#define COMPLETE_MODE 3
+#define MODE_ITERATE 0
+#define MODE_PASTE 1
+
+#define ITERATE_START_MODE 1
+#define ITERATE_END_MODE 2
+#define ITERATE_COMPLETE_MODE 3
 #define WORKDAY_IN_MINUTES 480
 
 int validateValue(const char *str);
@@ -28,16 +31,16 @@ int main() {
 
   char selection[8];
   int mode;
-  printf("Välj läge, 0=standard, 1=Klister\n");
+  printf("Välj läge, 0=iterativt, 1=Klister\n");
 
   if (fgets(selection, sizeof selection, stdin) == NULL)
     return 1;
   mode = atoi(&selection[0]);
 
-  if (mode == 0) {
+  if (mode == MODE_ITERATE) {
     iterateTimes(&count, starts, ends);
 
-  } else if (mode == 1) {
+  } else if (mode == MODE_PASTE) {
     pasteInput(&count, starts, ends);
   }
 
@@ -140,16 +143,16 @@ void iterateTimes(size_t *count, char starts[][TIME_LEN],
     printf("Varv %zu\n", *count);
 
     if (strlen(starts[*count]) == 0) {
-      mode = START_MODE;
+      mode = ITERATE_START_MODE;
     } else if (strlen(ends[*count]) == 0) {
-      mode = END_MODE;
+      mode = ITERATE_END_MODE;
     } else {
-      mode = COMPLETE_MODE;
+      mode = ITERATE_COMPLETE_MODE;
     }
 
-    if (mode == START_MODE) {
+    if (mode == ITERATE_START_MODE) {
       printf("Ange starttid (hh:mm)");
-    } else if (mode == END_MODE) {
+    } else if (mode == ITERATE_END_MODE) {
       printf("Ange sluttid (hh:mm)");
     } else {
       printf("Du har angivit '%s' -> '%s'\n", starts[*count], ends[*count]);
