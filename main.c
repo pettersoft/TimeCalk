@@ -1,4 +1,3 @@
-#include "tcalc.h"
 #include "timespan.h"
 #include <ctype.h>
 #include <stdio.h>
