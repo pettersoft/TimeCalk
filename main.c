@@ -22,7 +22,6 @@ void parseToWrappers(size_t count, const char starts[][TIME_LEN],
 int parseToMinutes(const char *input);
 
 int main() {
-  printf("bamse\n");
   char starts[MAX_ROWS][TIME_LEN] = {{0}};
   char ends[MAX_ROWS][TIME_LEN] = {{0}};
   size_t count = 0;
