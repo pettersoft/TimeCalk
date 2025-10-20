@@ -8,8 +8,8 @@
 #define TIME_LEN 7
 #define LINE_LEN 7
 
-#define MODE_ITERATE 0
-#define MODE_PASTE 1
+#define MODE_ITERATE '0'
+#define MODE_PASTE '1'
 
 #define ITERATE_START_MODE 1
 #define ITERATE_END_MODE 2
@@ -30,18 +30,20 @@ int main() {
   size_t count = 0;
 
   char selection[8];
-  int mode;
   printf("Välj läge, 0=iterativt, 1=Klister\n");
+  char* mode;
 
-  if (fgets(selection, sizeof selection, stdin) == NULL)
-    return 1;
-  mode = atoi(&selection[0]);
+   if (fgets(selection, sizeof selection, stdin) == NULL)
+     return 1;
+   mode = &selection[0];
 
-  if (mode == MODE_ITERATE) {
+  if (*mode == MODE_ITERATE) {
     iterateTimes(&count, starts, ends);
-
-  } else if (mode == MODE_PASTE) {
+  } else if (*mode == MODE_PASTE) {
     pasteInput(&count, starts, ends);
+  } else {
+    printf("Felakigt menyval, programmet avbryts...");
+    return 0;
   }
 
   printf("Du valde läge %s", selection);
