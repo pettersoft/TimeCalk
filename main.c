@@ -1,3 +1,5 @@
+#include "group-work.h"
+#include "string-helpers.h"
 #include "timespan.h"
 #include <ctype.h>
 #include <stdio.h>
@@ -17,122 +19,130 @@
 #define WORKDAY_IN_MINUTES 480
 
 int validateValue(const char *str);
+void removeWhitespaces(char *str);
 void pasteInput(size_t *count, char starts[][TIME_LEN], char ends[][TIME_LEN]);
 void iterateTimes(size_t *count, char starts[][TIME_LEN],
                   char ends[][TIME_LEN]);
-void parseToWrappers(size_t count, const char starts[][TIME_LEN],
-                     const char ends[][TIME_LEN], Timespan work[count]);
-int parseToMinutes(const char *input);
+
+void parseGroups(size_t *count, GroupWork tot[MAX_ROWS]);
 
 int main() {
   char starts[MAX_ROWS][TIME_LEN] = {{0}};
   char ends[MAX_ROWS][TIME_LEN] = {{0}};
+  GroupWork tot[MAX_ROWS];
   size_t count = 0;
 
   char selection[8];
   printf("Välj läge, 0=iterativt, 1=Klister\n");
-  char* mode;
+  char *mode;
 
-   if (fgets(selection, sizeof selection, stdin) == NULL)
-     return 1;
-   mode = &selection[0];
+  if (fgets(selection, sizeof selection, stdin) == NULL)
+    return 1;
+  mode = &selection[0];
 
   if (*mode == MODE_ITERATE) {
     iterateTimes(&count, starts, ends);
+
+    Timespan work[count];
+    parseTimespans(count, starts, ends, work);
+
+    printf("Beräkning slutförd\n");
+    int totalHours = 0, totalMinutes = 0;
+    for (size_t i = 0; i < count; i++) {
+      Timespan t = work[i];
+
+      totalHours += t.hours;
+      totalMinutes += t.minutes;
+    }
+
+    int totmin = (totalHours * 60) + totalMinutes;
+    int totalWorkHours = totmin / 60;
+    int totWorkMins = totmin % 60;
+
+    printf("Det innebär att du har arbetat: %d timmar och %d minuter.\n",
+           totalWorkHours, totWorkMins);
+
+    if (totmin < WORKDAY_IN_MINUTES) {
+      int rest = WORKDAY_IN_MINUTES - totmin;
+
+      int restH = rest / 60;
+      int restM = rest % 60;
+
+      printf("Det innebär att du har %d timmar och %d minuter frånvaro\n",
+             restH, restM);
+    }
   } else if (*mode == MODE_PASTE) {
-    pasteInput(&count, starts, ends);
+    // pasteInput(&count, starts, ends);
+    parseGroups(&count, tot);
+
+    for (size_t i = 0; i < count; i++){
+        GroupWork gw = tot[i];
+        printf("Group name: %s\n", gw.groupName);
+    }
   } else {
     printf("Felakigt menyval, programmet avbryts...");
     return 0;
   }
 
-  printf("Du valde läge %s", selection);
-
-  Timespan work[count];
-  parseToWrappers(count, starts, ends, work);
-
-  printf("Beräkning slutförd\n");
-  int totalHours = 0, totalMinutes = 0;
-  for (size_t i = 0; i < count; i++) {
-    Timespan t = work[i];
-
-    totalHours += t.hours;
-    totalMinutes += t.minutes;
-  }
-
-  int totmin = (totalHours * 60) + totalMinutes;
-  int totalWorkHours = totmin / 60;
-  int totWorkMins = totmin % 60;
-
-  printf("Det innebär att du har arbetat: %d timmar och %d minuter.\n",
-         totalWorkHours, totWorkMins);
-
-  if (totmin < WORKDAY_IN_MINUTES) {
-    int rest = WORKDAY_IN_MINUTES - totmin;
-
-    int restH = rest / 60;
-    int restM = rest % 60;
-
-    printf("Det innebär att du har %d timmar och %d minuter frånvaro\n", restH,
-           restM);
-  }
-
   return 0;
 }
 
-int parseToMinutes(const char *input) {
-  int hours, minutes, calc;
-  char h[3], m[3];
-  memcpy(h, input, 2);
-  memcpy(m, input + 3, 2);
-  h[2] = '\0';
-  m[2] = '\0';
+void parseGroups(size_t *count, GroupWork tot[MAX_ROWS]) {
+  printf("Klistra in");
 
-  hours = atoi(h);
-  minutes = atoi(m);
-
-  calc = (hours * 60) + minutes;
-
-  return calc;
-}
-
-void parseToWrappers(size_t count, const char starts[][TIME_LEN],
-                     const char ends[][TIME_LEN], Timespan workDone[count]) {
-  for (size_t i = 0; i < count; i++) {
-    int startMinutes = parseToMinutes(starts[i]);
-    int endMinutes = parseToMinutes(ends[i]);
-
-    int workedTime = endMinutes - startMinutes;
-
-    if (workedTime < 0) {
-      fprintf(stderr, "Angivet intervall är omöjligt, du kan ej arbeta bakåt");
-      workedTime = 0;
-    }
-
-    workDone[i] = (Timespan){workedTime / 60, workedTime % 60};
-  }
-}
-
-void pasteInput(size_t *count, char starts[][TIME_LEN], char ends[][TIME_LEN]) {
-  if (starts && ends && *count) {
-  }
-  printf("Klistra in...\n");
   char line[32];
-  while (*count < MAX_ROWS && fgets(line, sizeof(line), stdin)) {
-    size_t delPos = strcspn(line, "->");
-    if (delPos <= 0) {
-      fprintf(stderr, "Ingen -> pil angiven");
-    }
+  GroupWork curr_grp;
 
-    size_t len = strcspn(line, "\n");
-    if (len == 0)
-      break;
+  gw_init(&curr_grp);
 
-    if (sscanf(line, "%6s -> %6s", starts[*count], ends[*count]) == 2) {
+  curr_grp.groupName = "Standard";
+
+  int lap = 0;
+  while (*count < MAX_ROWS && fgets(line, sizeof line, stdin)) {
+    removeWhitespaces(line);
+    if (line[0] == '#' && *count == 0) {
+      curr_grp.groupName = strdup(line);
       ++(*count);
+      continue;
+    } else if (line[0] == '#' && *count > 0) {
+      // This means we should add the group to the array of groups
+      // and init a new group
+      tot[lap] = curr_grp;
+      ++lap;
+
+      gw_init(&curr_grp);
+      curr_grp.groupName = strdup(line);
+      ++(*count);
+      continue;
     } else {
-      fprintf(stderr, "Ignorerar rad: %s\n", line);
+      size_t delPos = strcspn(line, "->");
+      if (delPos <= 0) {
+        fprintf(stderr, "Ingen -> pil angiven");
+      }
+
+      size_t len = strcspn(line, "\n");
+      if (len == 0)
+        break;
+
+      gw_ensure_kappa(&curr_grp, curr_grp.size + 1);
+
+      if (sscanf(line, "%6s->%6s", curr_grp.starts[*count],
+                 curr_grp.ends[*count]) == 2) {
+        ++(*count);
+        curr_grp.size++;
+      } else {
+        fprintf(stderr, "Ignorerar rad: %s\n", line);
+      }
     }
+
+    if (lap < MAX_ROWS && ((curr_grp.groupName && *curr_grp.groupName) || curr_grp.size > 0)) {
+        tot[lap++] = curr_grp;
+        gw_init(&curr_grp);
+    } else {
+        // if not moved, free it
+        gw_free(&curr_grp);
+    }
+
   }
 }
 
