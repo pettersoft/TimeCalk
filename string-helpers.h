@@ -4,5 +4,6 @@
 #include <stddef.h>
 
 void removeWhitespaces(char *str);
+void str_alloc_copy(char** dest, char* src);
 
 #endif

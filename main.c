@@ -25,6 +25,7 @@ void iterateTimes(size_t *count, char starts[][TIME_LEN],
                   char ends[][TIME_LEN]);
 
 void parseGroups(size_t *count, GroupWork tot[MAX_ROWS]);
+void printGroups(GroupWork *groups, size_t len);
 
 int main() {
   char starts[MAX_ROWS][TIME_LEN] = {{0}};
@@ -74,11 +75,7 @@ int main() {
   } else if (*mode == MODE_PASTE) {
     // pasteInput(&count, starts, ends);
     parseGroups(&count, tot);
-
-    for (size_t i = 0; i < count; i++){
-        GroupWork gw = tot[i];
-        printf("Group name: %s\n", gw.groupName);
-    }
+    printGroups(tot, count);
   } else {
     printf("Felakigt menyval, programmet avbryts...");
     return 0;
@@ -88,20 +85,24 @@ int main() {
 }
 
 void parseGroups(size_t *count, GroupWork tot[MAX_ROWS]) {
-  printf("Klistra in");
+  printf("Klistra in:\n");
 
   char line[32];
   GroupWork curr_grp;
 
   gw_init(&curr_grp);
-
   curr_grp.groupName = "Standard";
+  printf("Grupp med namn %s initialiserad\n", curr_grp.groupName);
 
   int lap = 0;
+  
   while (*count < MAX_ROWS && fgets(line, sizeof line, stdin)) {
+    printf("\n\nTolkar data...\n\n”");
     removeWhitespaces(line);
     if (line[0] == '#' && *count == 0) {
-      curr_grp.groupName = strdup(line);
+      str_alloc_copy(&curr_grp.groupName, line);
+      printf("Kopierade gruppnamn %s\n", curr_grp.groupName);
+      
       ++(*count);
       continue;
     } else if (line[0] == '#' && *count > 0) {
@@ -111,7 +112,9 @@ void parseGroups(size_t *count, GroupWork tot[MAX_ROWS]) {
       ++lap;
 
       gw_init(&curr_grp);
-      curr_grp.groupName = strdup(line);
+      
+      str_alloc_copy(&curr_grp.groupName, line);
+      printf("Initierar ny grupp, kopierar '%s' som gruppnamn\n", curr_grp.groupName);
       ++(*count);
       continue;
     } else {
@@ -126,23 +129,26 @@ void parseGroups(size_t *count, GroupWork tot[MAX_ROWS]) {
 
       gw_ensure_kappa(&curr_grp, curr_grp.size + 1);
 
-      if (sscanf(line, "%6s->%6s", curr_grp.starts[*count],
+      if (sscanf(line, "%5s->%5s", curr_grp.starts[*count],
                  curr_grp.ends[*count]) == 2) {
+                  printf("Scan lyckades, tolkade %s till %s och %s\n", line, curr_grp.starts[*count], curr_grp.ends[*count]);
         ++(*count);
         curr_grp.size++;
       } else {
         fprintf(stderr, "Ignorerar rad: %s\n", line);
       }
     }
+  }
+}
 
-    if (lap < MAX_ROWS && ((curr_grp.groupName && *curr_grp.groupName) || curr_grp.size > 0)) {
-        tot[lap++] = curr_grp;
-        gw_init(&curr_grp);
-    } else {
-        // if not moved, free it
-        gw_free(&curr_grp);
-    }
+void printGroups(GroupWork *groups, size_t len) {
+  for (size_t i = 0; i < len; i++){
+    printf("Grupp: %s\n", groups[i].groupName);
 
+    printf("Allokerat %lu\n", groups[i].allocated);
+    printf("Storlek %lu\n", groups[i].size);
+
+    printf("\n\n");
   }
 }
 

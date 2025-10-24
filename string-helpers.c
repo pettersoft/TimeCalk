@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "string-helpers.h"
 
@@ -18,4 +20,12 @@ void removeWhitespaces(char *str) {
 
   newArr[charPos] = '\0';
   memcpy(str, newArr, charPos + 1);
+}
+
+void str_alloc_copy(char **dest, char *src) {
+  char *s = malloc(sizeof(char) * strlen(src) + 1);
+  
+  strcpy(s, src);
+
+  *dest = s;
 }
