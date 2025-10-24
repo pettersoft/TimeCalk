@@ -87,57 +87,100 @@ int main() {
 void parseGroups(size_t *count, GroupWork tot[MAX_ROWS]) {
   printf("Klistra in:\n");
 
-  char line[32];
+  char line[64];
   GroupWork curr_grp;
+  int has_group = 0;
 
   gw_init(&curr_grp);
-  curr_grp.groupName = "Standard";
-  printf("Grupp med namn %s initialiserad\n", curr_grp.groupName);
 
-  int lap = 0;
-  
-  while (*count < MAX_ROWS && fgets(line, sizeof line, stdin)) {
-    printf("\n\nTolkar data...\n\n”");
-    removeWhitespaces(line);
-    if (line[0] == '#' && *count == 0) {
-      str_alloc_copy(&curr_grp.groupName, line);
-      printf("Kopierade gruppnamn %s\n", curr_grp.groupName);
-      
-      ++(*count);
+  while (fgets(line, sizeof line, stdin)) {
+    size_t len = strcspn(line, "\r\n");
+    line[len] = '\0';
+
+    if (line[0] == '\0') {
       continue;
-    } else if (line[0] == '#' && *count > 0) {
-      // This means we should add the group to the array of groups
-      // and init a new group
-      tot[lap] = curr_grp;
-      ++lap;
-
-      gw_init(&curr_grp);
-      
-      str_alloc_copy(&curr_grp.groupName, line);
-      printf("Initierar ny grupp, kopierar '%s' som gruppnamn\n", curr_grp.groupName);
-      ++(*count);
-      continue;
-    } else {
-      size_t delPos = strcspn(line, "->");
-      if (delPos <= 0) {
-        fprintf(stderr, "Ingen -> pil angiven");
-      }
-
-      size_t len = strcspn(line, "\n");
-      if (len == 0)
-        break;
-
-      gw_ensure_kappa(&curr_grp, curr_grp.size + 1);
-
-      if (sscanf(line, "%5s->%5s", curr_grp.starts[*count],
-                 curr_grp.ends[*count]) == 2) {
-                  printf("Scan lyckades, tolkade %s till %s och %s\n", line, curr_grp.starts[*count], curr_grp.ends[*count]);
-        ++(*count);
-        curr_grp.size++;
-      } else {
-        fprintf(stderr, "Ignorerar rad: %s\n", line);
-      }
     }
+
+    if (line[0] == '#') {
+      if (has_group) {
+        if (*count >= MAX_ROWS) {
+          fprintf(stderr, "Maximalt antal grupper (%d) uppnått.\n", MAX_ROWS);
+          gw_free(&curr_grp);
+          has_group = 0;
+          break;
+        }
+        tot[*count] = curr_grp;
+        ++(*count);
+        gw_init(&curr_grp);
+      } else {
+        has_group = 1;
+      }
+
+      char *group_name = line + 1;
+      while (*group_name == ' ') {
+        ++group_name;
+      }
+      if (*group_name == '\0') {
+        group_name = "Namnlös grupp";
+      }
+      str_alloc_copy(&curr_grp.groupName, group_name);
+      continue;
+    }
+
+    if (!has_group) {
+      fprintf(stderr, "Rad ignorerad tills en grupp angivits: %s\n", line);
+      continue;
+    }
+
+    char *arrow = strstr(line, "->");
+    if (!arrow) {
+      fprintf(stderr, "Ingen -> pil angiven: %s\n", line);
+      continue;
+    }
+
+    *arrow = '\0';
+    char *start = line;
+    char *end = arrow + 2;
+
+    while (isspace((unsigned char)*start)) {
+      ++start;
+    }
+    char *start_end = start + strlen(start);
+    while (start_end > start && isspace((unsigned char)start_end[-1])) {
+      --start_end;
+    }
+    *start_end = '\0';
+
+    while (isspace((unsigned char)*end)) {
+      ++end;
+    }
+    char *end_end = end + strlen(end);
+    while (end_end > end && isspace((unsigned char)end_end[-1])) {
+      --end_end;
+    }
+    *end_end = '\0';
+
+    if (gw_ensure_kappa(&curr_grp, curr_grp.size + 1) != 0) {
+      fprintf(stderr, "Kunde inte allokera plats för nya tider.\n");
+      gw_free(&curr_grp);
+      has_group = 0;
+      break;
+    }
+
+    strncpy(curr_grp.starts[curr_grp.size], start, TIME_LEN - 1);
+    curr_grp.starts[curr_grp.size][TIME_LEN - 1] = '\0';
+
+    strncpy(curr_grp.ends[curr_grp.size], end, TIME_LEN - 1);
+    curr_grp.ends[curr_grp.size][TIME_LEN - 1] = '\0';
+
+    curr_grp.size++;
+  }
+
+  if (has_group && *count < MAX_ROWS) {
+    tot[*count] = curr_grp;
+    ++(*count);
+  } else {
+    gw_free(&curr_grp);
   }
 }
 

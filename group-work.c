@@ -15,15 +15,15 @@ void gw_init(GroupWork *gw) {
 int gw_ensure_kappa(GroupWork *gw, size_t req) {
     if (!gw) return EXIT_FAILURE;
 
-    if (req <= gw->allocated) return EXIT_FAILURE;
+    if (req <= gw->allocated) return 0;
 
     size_t newKappa = gw->allocated ? gw->allocated * 2 : 8;
     while (newKappa < req) {
         newKappa*=2;
     }
 
-    void *newStarts = realloc(gw->starts,newKappa);
-    void *newEnds = realloc(gw->ends, newKappa);
+    void *newStarts = realloc(gw->starts, newKappa * sizeof *gw->starts);
+    void *newEnds = realloc(gw->ends, newKappa * sizeof *gw->ends);
 
     if (!newStarts || !newEnds) {
         free(newStarts);
